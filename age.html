@@ -122,10 +122,16 @@ function updateOutput(dobStr, name){
   // Highlighted, bold days output
   const daysHighlight = `<span style="background:#fff3bf;border:1px solid #fde68a;padding:4px 8px;border-radius:6px;font-weight:700;">${totalDays.toLocaleString()}</span>`;
 
+  const displayName = name || 'This child';
+
   out.innerHTML = `
-    <div><strong>${who} ${ageParts.years} years, ${ageParts.months} months, and ${ageParts.days} days</strong> old as of ${now.toLocaleDateString()}.</div>
-    <div class="small" style="margin-top:8px">Total days lived: <strong>${daysHighlight}</strong></div>
-    <div class="small" style="margin-top:6px">Exact birthdate used: <code>${dobStr}</code></div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:10px">
+      ${displayName} is ${daysHighlight} days old today!
+    </div>
+    <div class="small" style="margin-bottom:6px">
+      <strong>${displayName}'s Age</strong> — ${ageParts.years} years, ${ageParts.months} months, and ${ageParts.days} days old as of ${now.toLocaleDateString()}.
+    </div>
+    <div class="small">Exact birthdate used: <code>${dobStr}</code></div>
   `;
 }
 
