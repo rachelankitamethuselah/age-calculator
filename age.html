@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Age Calculator — Accurate to the Day</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color:#0f172a}
+    body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f8fafc;margin:0;padding:24px}
+    .card{background:white;padding:20px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.08);max-width:680px;width:100%}
+    h1{font-size:20px;margin:0 0 8px}
+    label{display:block;margin-top:12px;font-size:13px}
+    input[type=date], input[type=text]{width:100%;padding:8px 10px;margin-top:6px;border:1px solid #e6eef5;border-radius:8px}
+    button{margin-top:12px;padding:10px 14px;border-radius:10px;border:0;background:#0ea5a4;color:white;font-weight:600;cursor:pointer}
+    .result{margin-top:18px;padding:12px;border-radius:8px;background:#f1f8f9;border:1px solid #e6f3f3}
+    .small{font-size:13px;color:#334155}
+    footer{margin-top:14px;font-size:12px;color:#64748b}
+    .muted{color:#64748b}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Age calculator — accurate to the day</h1>
+    <p class="small">Enter a date of birth or include <code>?dob=YYYY-MM-DD</code> in the URL. The page computes the age when opened.</p>
+
+    <label for="name">Name (optional)</label>
+    <input id="name" type="text" placeholder="e.g. Emma" />
+
+    <label for="dob">Date of birth</label>
+    <input id="dob" type="date" />
+
+    <button id="calc">Calculate age now</button>
+
+    <div id="out" class="result" aria-live="polite">
+      <div class="small muted">No calculation yet — enter a date or open the page with <code>?dob=YYYY-MM-DD</code>.</div>
+    </div>
+
+    <footer>
+      <div class="small">Tip: To share this page with the birthdate pre-filled use a URL like <code>yourpage.html?dob=2018-08-25&amp;name=Emma</code>.</div>
+    </footer>
+  </main>
+
+<script>
+// Helper: parse URL params
+function getParams(){
+  const params = new URLSearchParams(window.location.search);
+  return { dob: params.get('dob'), name: params.get('name') };
+}
+
+// Days in month helper
+function daysInMonth(year, month){
+  return new Date(year, month, 0).getDate(); // month: 1-12
+}
+
+// Main precise age calculation (years, months, days)
+function calculateAgeParts(dobDate, nowDate){
+  if(!(dobDate instanceof Date) || isNaN(dobDate)) return null;
+  const y1 = dobDate.getFullYear();
+  const m1 = dobDate.getMonth() + 1; // 1-12
+  const d1 = dobDate.getDate();
+
+  const y2 = nowDate.getFullYear();
+  const m2 = nowDate.getMonth() + 1;
+  const d2 = nowDate.getDate();
+
+  let years = y2 - y1;
+  let months = m2 - m1;
+  let days = d2 - d1;
+
+  if (days < 0) {
+    // borrow days from previous month
+    const prevMonth = (m2 - 1) || 12;
+    const prevMonthYear = (m2 - 1) ? y2 : (y2 - 1);
+    days += daysInMonth(prevMonthYear, prevMonth);
+    months -= 1;
+  }
+
+  if (months < 0) {
+    months += 12;
+    years -= 1;
+  }
+
+  if (years < 0) return null; // DOB in future
+
+  return { years, months, days };
+}
+
+// Format ordinal / plural
+function plural(n, word){
+  return n + ' ' + word + (n === 1 ? '' : 's');
+}
+
+function updateOutput(dobStr, name){
+  const out = document.getElementById('out');
+  if(!dobStr){
+    out.innerHTML = '<div class="small muted">Please enter a date of birth.</div>';
+    return;
+  }
+
+  const dob = new Date(dobStr + 'T00:00:00'); // enforce local midnight
+  const now = new Date();
+
+  if (isNaN(dob)){
+    out.innerHTML = '<div class="small muted">Invalid date format. Use YYYY-MM-DD.</div>';
+    return;
+  }
+
+  if (dob > now){
+    out.innerHTML = '<div class="small muted">That date is in the future.</div>';
+    return;
+  }
+
+  const parts = calculateAgeParts(dob, now);
+  const totalDays = Math.floor((now - dob) / (1000*60*60*24));
+  const totalMonths = (now.getFullYear() - dob.getFullYear())*12 + (now.getMonth() - dob.getMonth());
+
+  const who = name ? `${name} is` : 'Age';
+
+  out.innerHTML = `
+    <div><strong>${who} ${parts.years} years, ${parts.months} months, and ${parts.days} days</strong> old as of ${now.toLocaleDateString()}.</div>
+    <div class="small" style="margin-top:8px">Total: <strong>${totalDays.toLocaleString()}</strong> day(s) (${totalMonths} month(s)).</div>
+    <div class="small" style="margin-top:6px">Exact birthdate used: <code>${dob.toISOString().slice(0,10)}</code></div>
+  `;
+}
+
+// Wire up UI
+const params = getParams();
+const dobInput = document.getElementById('dob');
+const nameInput = document.getElementById('name');
+
+if(params.dob) {
+  // try to prefill
+  dobInput.value = params.dob;
+}
+if(params.name) nameInput.value = decodeURIComponent(params.name);
+
+// If URL provides a dob, automatically calculate once on load
+window.addEventListener('DOMContentLoaded', ()=>{
+  if(dobInput.value) updateOutput(dobInput.value, nameInput.value.trim());
+});
+
+document.getElementById('calc').addEventListener('click', ()=>{
+  updateOutput(dobInput.value, nameInput.value.trim());
+});
+
+// Also recalc when pressing Enter on inputs
+[dobInput, nameInput].forEach(el=>{
+  el.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') updateOutput(dobInput.value, nameInput.value.trim());
+  });
+});
+</script>
+</body>
+</html>
